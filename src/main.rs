@@ -6,7 +6,7 @@ use tracing_subscriber::{EnvFilter, filter, fmt};
 use tungstenite::{Message, WebSocket, connect, stream::MaybeTlsStream};
 use url::Url;
 
-use graffiti::{CLIArgs, Configuration};
+use graffiti::{CLIArgs, Configuration, connect_to_server};
 
 #[tracing::instrument]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -52,21 +52,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     loop {}
-}
-
-#[tracing::instrument]
-fn connect_to_server(
-    urls: Vec<Url>,
-) -> Result<Vec<WebSocket<MaybeTlsStream<TcpStream>>>, Box<dyn std::error::Error>> {
-    let mut result: Vec<WebSocket<MaybeTlsStream<TcpStream>>> = Vec::new();
-
-    for url in urls {
-        let (socket, response) = connect(url.as_str())?;
-        debug!("Received from {}: {:?}", url, response);
-        debug!("Create a socket from {}", url);
-
-        result.push(socket);
-    }
-
-    return Ok(result);
 }

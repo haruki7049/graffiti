@@ -1,3 +1,6 @@
+use std::net::TcpStream;
+use tracing::{debug, warn};
+use tungstenite::{WebSocket, stream::MaybeTlsStream};
 use clap::Parser;
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
@@ -33,4 +36,21 @@ impl Configuration {
     pub fn relays(&self) -> Vec<Url> {
         self.relays.clone()
     }
+}
+
+#[tracing::instrument]
+pub fn connect_to_server(
+    urls: Vec<Url>,
+) -> Result<Vec<WebSocket<MaybeTlsStream<TcpStream>>>, Box<dyn std::error::Error>> {
+    let mut result: Vec<WebSocket<MaybeTlsStream<TcpStream>>> = Vec::new();
+
+    for url in urls {
+        let (socket, response) = tungstenite::connect(url.as_str())?;
+        debug!("Received from {}: {:?}", url, response);
+        debug!("Create a socket from {}", url);
+
+        result.push(socket);
+    }
+
+    return Ok(result);
 }
