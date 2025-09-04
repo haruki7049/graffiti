@@ -52,5 +52,5 @@ pub fn connect_to_server(
         result.push(socket);
     }
 
-    return Ok(result);
+    Ok(result)
 }

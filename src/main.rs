@@ -59,5 +59,7 @@ fn mainloop(
         }
     }
 
-    loop {}
+    std::thread::yield_now();
+
+    Ok(())
 }
