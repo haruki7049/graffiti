@@ -1,13 +1,13 @@
-use std::net::TcpStream;
-use tracing::{debug, warn};
-use tungstenite::{WebSocket, stream::MaybeTlsStream};
 use clap::Parser;
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
+use std::net::TcpStream;
 use std::{
     path::PathBuf,
     sync::{LazyLock, Mutex},
 };
+use tracing::{debug, warn};
+use tungstenite::{WebSocket, stream::MaybeTlsStream};
 use url::Url;
 
 #[derive(Parser)]

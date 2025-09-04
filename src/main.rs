@@ -3,8 +3,7 @@ use std::net::TcpStream;
 use tracing::{debug, info, warn};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{EnvFilter, filter, fmt};
-use tungstenite::{Message, WebSocket, connect, stream::MaybeTlsStream};
-use url::Url;
+use tungstenite::{Message, WebSocket, stream::MaybeTlsStream};
 
 use graffiti::{CLIArgs, Configuration, connect_to_server};
 
@@ -32,6 +31,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Connected to the server");
     debug!("sockets: {:?}", sockets);
 
+    mainloop(sockets)?;
+
+    Ok(())
+}
+
+#[tracing::instrument]
+fn mainloop(
+    sockets: Vec<WebSocket<MaybeTlsStream<TcpStream>>>,
+) -> Result<(), Box<dyn std::error::Error>> {
     for mut socket in sockets {
         socket.send(Message::Text("[\"REQ\", \"sub1\", {}]".into()))?;
 
