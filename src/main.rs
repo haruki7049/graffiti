@@ -2,7 +2,7 @@ use clap::Parser;
 use std::net::TcpStream;
 use tracing::{debug, info, warn};
 use tracing_subscriber::prelude::*;
-use tracing_subscriber::{EnvFilter, fmt};
+use tracing_subscriber::{EnvFilter, filter, fmt};
 use tungstenite::{Message, WebSocket, connect, stream::MaybeTlsStream};
 use url::Url;
 
@@ -12,7 +12,11 @@ use graffiti::{CLIArgs, Configuration};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::registry()
         .with(fmt::layer())
-        .with(EnvFilter::from_default_env())
+        .with(
+            EnvFilter::builder()
+                .with_default_directive(filter::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
         .init();
 
     let args: CLIArgs = CLIArgs::parse();
