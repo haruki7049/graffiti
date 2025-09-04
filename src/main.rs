@@ -38,8 +38,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn mainloop(
     sockets: Vec<WebSocket<MaybeTlsStream<TcpStream>>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    const QUERY: &str = "[\"REQ\", \"sub1\", {\"kinds\":[1], \"limit\":0}]";
+
     for mut socket in sockets {
-        socket.send(Message::Text("[\"REQ\", \"sub1\", {}]".into()))?;
+        socket.send(Message::Text(QUERY.into()))?;
 
         loop {
             let msg = socket.read().expect("Error reading message");
@@ -47,7 +49,7 @@ fn mainloop(
 
             match msg {
                 Message::Text(ref bytes) => {
-                    info!("Received: {}", bytes);
+                    debug!("Received: {}", bytes);
                 }
                 Message::Pong(_) => (),
                 v => {
