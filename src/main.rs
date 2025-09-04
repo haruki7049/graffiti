@@ -7,7 +7,6 @@ use tungstenite::{Message, WebSocket, stream::MaybeTlsStream};
 
 use graffiti::{CLIArgs, Configuration, connect_to_server};
 
-#[tracing::instrument]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::registry()
         .with(fmt::layer())
@@ -36,7 +35,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[tracing::instrument]
 fn mainloop(
     sockets: Vec<WebSocket<MaybeTlsStream<TcpStream>>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
