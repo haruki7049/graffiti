@@ -1,3 +1,10 @@
+use serde::{Serialize, Deserialize};
+use std::{
+    path::PathBuf,
+    sync::{Mutex, LazyLock},
+};
+use directories::ProjectDirs;
+use clap::Parser;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 use std::net::TcpStream;
@@ -13,12 +20,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with(EnvFilter::from_default_env())
         .init();
 
-    let urls: Vec<Url> = vec![
-        Url::parse("wss://yabu.me")?,
-        Url::parse("wss://yabu.me")?,
-    ];
+    let args: CLIArgs = CLIArgs::parse();
+    let configuration: Configuration = confy::load_path(&args.config_file)?;
 
-    let sockets: Vec<WebSocket<MaybeTlsStream<TcpStream>>> = connect_to_server(urls)?;
+    if configuration.relays.is_empty() {
+        panic!("No relays found.");
+    }
+
+    let sockets: Vec<WebSocket<MaybeTlsStream<TcpStream>>> = connect_to_server(configuration.relays)?;
 
     info!("Connected to the server");
     debug!("sockets: {:?}", sockets);
@@ -32,8 +41,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     loop {}
-
-    Ok(())
 }
 
 #[tracing::instrument]
@@ -49,4 +56,26 @@ fn connect_to_server(urls: Vec<Url>) -> Result<Vec<WebSocket<MaybeTlsStream<TcpS
     }
 
     return Ok(result);
+}
+
+#[derive(Parser)]
+#[clap(about, version, author)]
+struct CLIArgs {
+    #[arg(short, long, default_value = DEFAULT_CONFIG_PATH.lock().unwrap().display().to_string())]
+    config_file: PathBuf,
+}
+
+static DEFAULT_CONFIG_PATH: LazyLock<Mutex<PathBuf>> = LazyLock::new(|| {
+    let proj_dirs = ProjectDirs::from("dev", "haruki7049", "graffiti")
+        .expect("Failed to search ProjectDirs for dev.haruki7049.spacerobo");
+    let mut config_path: PathBuf = proj_dirs.config_dir().to_path_buf();
+    let filename: &str = "config.toml";
+
+    config_path.push(filename);
+    Mutex::new(config_path)
+});
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+struct Configuration {
+    relays: Vec<Url>,
 }
