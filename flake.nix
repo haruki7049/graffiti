@@ -103,11 +103,18 @@
 
           devShells.default = pkgs.mkShell {
             nativeBuildInputs = [
-              # Rust
+              # Compiler
               rust
 
-              # Nix
+              # C Header manager
+              pkgs.pkg-config
+
+              # LSP
               pkgs.nil
+            ];
+
+            buildInputs = [
+              pkgs.openssl
             ];
 
             shellHook = ''
