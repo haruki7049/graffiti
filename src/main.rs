@@ -1,6 +1,6 @@
 use clap::Parser;
 use std::net::TcpStream;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{EnvFilter, fmt};
 use tungstenite::{Message, WebSocket, connect, stream::MaybeTlsStream};
@@ -8,9 +8,8 @@ use url::Url;
 
 use graffiti::{CLIArgs, Configuration};
 
-#[tokio::main]
 #[tracing::instrument]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::registry()
         .with(fmt::layer())
         .with(EnvFilter::from_default_env())
@@ -30,13 +29,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     debug!("sockets: {:?}", sockets);
 
     for mut socket in sockets {
-        socket
-            .send(Message::Text("[\"REQ\", \"sub1\", {}]".into()))
-            .unwrap();
+        socket.send(Message::Text("[\"REQ\", \"sub1\", {}]".into()))?;
 
         loop {
             let msg = socket.read().expect("Error reading message");
             debug!("Received: {:?}", msg);
+
+            match msg {
+                Message::Text(ref bytes) => {
+                    info!("Received: {}", bytes);
+                }
+                Message::Pong(_) => (),
+                v => {
+                    warn!("Received unexpected format: {:?}", v);
+                }
+            }
         }
     }
 
