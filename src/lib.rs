@@ -38,7 +38,6 @@ impl Configuration {
     }
 }
 
-#[tracing::instrument]
 pub fn connect_to_server(
     urls: Vec<Url>,
 ) -> Result<Vec<WebSocket<MaybeTlsStream<TcpStream>>>, Box<dyn std::error::Error>> {
@@ -52,5 +51,7 @@ pub fn connect_to_server(
         result.push(socket);
     }
 
+    debug!("result: {:?}", result);
+    debug!("result.len: {}", result.len());
     Ok(result)
 }
