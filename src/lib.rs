@@ -1,13 +1,13 @@
 use clap::Parser;
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
-use std::net::TcpStream;
+use tokio::net::TcpStream;
 use std::{
     path::PathBuf,
     sync::{LazyLock, Mutex},
 };
+use tokio_tungstenite::{WebSocketStream, MaybeTlsStream};
 use tracing::{debug, warn};
-use tungstenite::{WebSocket, stream::MaybeTlsStream};
 use url::Url;
 
 #[derive(Parser)]
@@ -38,13 +38,13 @@ impl Configuration {
     }
 }
 
-pub fn connect_to_server(
+pub async fn connect_to_server(
     urls: Vec<Url>,
-) -> Result<Vec<WebSocket<MaybeTlsStream<TcpStream>>>, Box<dyn std::error::Error>> {
-    let mut result: Vec<WebSocket<MaybeTlsStream<TcpStream>>> = Vec::new();
+) -> Result<Vec<WebSocketStream<MaybeTlsStream<TcpStream>>>, Box<dyn std::error::Error>> {
+    let mut result: Vec<WebSocketStream<MaybeTlsStream<TcpStream>>> = Vec::new();
 
     for url in urls {
-        let (socket, response) = tungstenite::connect(url.as_str())?;
+        let (socket, response) = tokio_tungstenite::connect_async(url.as_str()).await?;
         debug!("Received from {}: {:?}", url, response);
         debug!("Create a socket from {}", url);
 

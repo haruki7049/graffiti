@@ -1,10 +1,11 @@
 use tokio::sync::mpsc;
 use clap::Parser;
-use std::net::TcpStream;
+use tokio::net::TcpStream;
 use tracing::{debug, info, warn};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{EnvFilter, filter, fmt};
-use tungstenite::{Message, WebSocket, stream::MaybeTlsStream};
+use tokio_tungstenite::{WebSocketStream, MaybeTlsStream, tungstenite::Message};
+use futures_util::{SinkExt, StreamExt};
 
 use graffiti::{CLIArgs, Configuration, connect_to_server};
 
@@ -28,8 +29,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     debug!("relays: {:?}", configuration.relays());
 
-    let sockets: Vec<WebSocket<MaybeTlsStream<TcpStream>>> =
-        connect_to_server(configuration.relays())?;
+    let sockets: Vec<WebSocketStream<MaybeTlsStream<TcpStream>>> =
+        connect_to_server(configuration.relays()).await?;
 
     info!("Connected to the server");
     debug!("sockets: {:?}", sockets);
@@ -39,9 +40,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[tracing::instrument(skip(sockets))]
+#[tracing::instrument]
 async fn mainloop(
-    sockets: Vec<WebSocket<MaybeTlsStream<TcpStream>>>,
+    sockets: Vec<WebSocketStream<MaybeTlsStream<TcpStream>>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     const QUERY: &str = "[\"REQ\", \"sub1\", {\"kinds\":[1], \"limit\":0}]";
 
@@ -49,30 +50,41 @@ async fn mainloop(
         let (tx, rx) = mpsc::channel(256);
 
         debug!("Socket: {:?}", socket);
-        socket.send(Message::Text(QUERY.into()))?;
+        socket.send(Message::Text(QUERY.into())).await?;
 
-        tokio::spawn(websocket_reader(socket, tx));
-        tokio::spawn(display_event(rx));
+        let reader = tokio::task::spawn(websocket_reader(socket, tx));
+        let display = tokio::task::spawn(display_event(rx));
+
+        let _ = tokio::join!(reader, display);
     }
-
-    std::thread::yield_now();
 
     Ok(())
 }
 
 #[tracing::instrument(skip(socket, tx))]
-async fn websocket_reader(mut socket: WebSocket<MaybeTlsStream<TcpStream>>, tx: mpsc::Sender<String>) {
-    loop {
-        let msg = socket.read().expect("Error reading message");
-
+async fn websocket_reader(
+    mut socket: WebSocketStream<MaybeTlsStream<TcpStream>>,
+    tx: mpsc::Sender<String>,
+) {
+    while let Some(msg) = socket.next().await {
         match msg {
-            Message::Text(ref bytes) => {
-                let s = bytes.as_str().to_string();
-                let _ = tx.send(s);
+            Ok(Message::Text(text)) => {
+                let t: String = text.to_string();
+
+                if let Err(e) = tx.send(t).await {
+                    warn!("Failed to send message to channel: {:?}", e);
+                    break;
+                }
             }
-            Message::Pong(_) => (),
-            v => {
-                warn!("Received unexpected format: {:?}", v);
+            Ok(Message::Pong(_)) => {
+                debug!("Received Pong");
+            }
+            Ok(other) => {
+                warn!("Received unexpected message: {:?}", other);
+            }
+            Err(e) => {
+                warn!("Error reading message: {:?}", e);
+                break;
             }
         }
     }
