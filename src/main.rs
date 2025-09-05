@@ -93,8 +93,10 @@ async fn websocket_reader(
 #[tracing::instrument(skip(rx))]
 async fn display_event(mut rx: mpsc::Receiver<String>) {
     loop {
-        let s = rx.recv().await;
-
-        info!("Received: {:?}", s);
+        let string = match rx.recv().await {
+            Some(s) => s,
+            None => return,
+        };
+        debug!("Received: {:?}", string);
     }
 }
